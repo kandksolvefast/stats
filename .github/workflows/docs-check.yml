@@ -1,0 +1,22 @@
+name: Docs Check
+
+on:
+  pull_request:
+    paths:
+      - 'stats-tauri/**'
+      - 'docs/**'
+      - '.github/workflows/docs-check.yml'
+      - 'scripts/check-docs.sh'
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run docs check
+        run: ./stats-tauri/scripts/check-docs.sh
+        env:
+          DOCS_BASE_REF: origin/${{ github.base_ref || 'main' }}

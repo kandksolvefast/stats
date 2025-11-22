@@ -19,6 +19,16 @@
 
 macOS system monitor in your menu bar
 
+## Tauri Migration (In Progress)
+
+We are migrating Stats to a cross-platform Tauri + React + TypeScript app while keeping the Swift app available. Current status:
+
+- **Phase 0: Planning** ✅ Complete — vision, architecture, design system, testing strategy, ADRs
+- **Phase 1: Setup + CPU MVP** 🚧 In Progress — Tauri scaffold, Tailwind tokens, CPU reader/stream/store/UI live; tests passing
+- **Next up:** Expand CPU UI (per-core charts, processes table, settings), wire more modules, add CI for `npm test` + `cargo test`
+
+Docs live in `docs/` (architecture, design-system, testing, modules, ADRs). New code lives in `stats-tauri/` (Tauri backend + React frontend).
+
 ## Installation
 ### Manual
 You can download the latest version [here](https://github.com/exelban/stats/releases/latest/download/Stats.dmg).
