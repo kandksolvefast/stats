@@ -19,13 +19,43 @@
 
 macOS system monitor in your menu bar
 
+## CPU Sidecar + Tauri Web UI (New!)
+
+![CPU Sidecar Dashboard](stats-tauri/screenshots/cpu-dashboard.png)
+
+We've added an **HTTP sidecar server** that exposes real-time CPU metrics from the Stats app, plus a modern **Tauri + React UI** to visualize them.
+
+### Features
+- **Dual-segment CPU gauge** showing system (red) and user (blue) loads separately
+- **Per-core color coding** (14 cores): green → blue → yellow → orange → red by usage
+- **Live metrics**: temperature, frequency, load averages, top processes
+- **Battery-friendly**: Disabled by default, 5s polling interval (vs 1s for popup)
+- **Easy setup**: Helper script (`./toggle-sidecar.sh`) handles enable/disable + restart
+
+### Quick Start
+
+```bash
+# 1. Enable sidecar (one-time)
+./toggle-sidecar.sh  # Choose option 1, allow restart
+
+# 2. Verify it's running
+curl http://127.0.0.1:8973/cpu
+
+# 3. Launch Tauri UI
+cd stats-tauri && npm install && npm run dev
+```
+
+See [stats-tauri/README.md](stats-tauri/README.md) for full documentation and [StatsSidecar/README-SIDECAR.md](StatsSidecar/README-SIDECAR.md) for configuration.
+
+---
+
 ## Tauri Migration (In Progress)
 
 We are migrating Stats to a cross-platform Tauri + React + TypeScript app while keeping the Swift app available. Current status:
 
 - **Phase 0: Planning** ✅ Complete — vision, architecture, design system, testing strategy, ADRs
-- **Phase 1: Setup + CPU MVP** 🚧 In Progress — Tauri scaffold, Tailwind tokens, CPU reader/stream/store/UI live; tests passing
-- **Next up:** Expand CPU UI (per-core charts, processes table, settings), wire more modules, add CI for `npm test` + `cargo test`
+- **Phase 1: Setup + CPU MVP** ✅ Complete — Tauri scaffold, HTTP sidecar, full CPU UI with live data
+- **Next up:** Expand to RAM, Disk, Network, Battery modules; add CI for `npm test` + `cargo test`
 
 Docs live in `docs/` (architecture, design-system, testing, modules, ADRs). New code lives in `stats-tauri/` (Tauri backend + React frontend).
 
