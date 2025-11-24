@@ -26,8 +26,7 @@ describe('useSystemData (mock mode)', () => {
   beforeEach(() => {
     useCpuStore.setState({ latest: undefined, history: [] });
     // Ensure Tauri bridge is absent
-    // @ts-expect-error
-    delete (globalThis as any).__TAURI__;
+    Reflect.deleteProperty(globalThis as any, '__TAURI__');
     vi.useFakeTimers();
   });
 

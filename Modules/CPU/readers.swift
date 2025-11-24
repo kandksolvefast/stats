@@ -177,8 +177,22 @@ public class ProcessReader: Reader<[TopProcess]> {
     }
     
     public override func setup() {
-        self.popup = true
-        self.setInterval(Store.shared.int(key: "\(self.title)_updateTopInterval", defaultValue: 1))
+        // Only run continuously if the CPU sidecar is enabled, otherwise gate to popup
+        // This prevents battery drain for users who don't use the sidecar
+        // NOTE: This flag is read once at startup - app restart required to apply changes
+        let sidecarEnabled = Store.shared.bool(key: "enableCpuSidecar", defaultValue: false)
+        self.popup = !sidecarEnabled
+
+        // When sidecar is enabled, use a separate interval key with conservative default (5s)
+        // to reduce ps spawn frequency and battery impact
+        // Users can configure: defaults write eu.exelban.Stats CPU_sidecarProcessInterval -int 5
+        if sidecarEnabled {
+            let sidecarInterval = Store.shared.int(key: "\(self.title)_sidecarProcessInterval", defaultValue: 5)
+            self.setInterval(sidecarInterval)
+        } else {
+            // Use standard popup interval (defaults to 1s)
+            self.setInterval(Store.shared.int(key: "\(self.title)_updateTopInterval", defaultValue: 1))
+        }
     }
     
     public override func read() {
@@ -246,9 +260,13 @@ public class ProcessReader: Reader<[TopProcess]> {
 
 public class TemperatureReader: Reader<Double> {
     var list: [String] = []
-    
+
     public override func setup() {
-        self.popup = true
+        // Only run continuously if the CPU sidecar is enabled, otherwise gate to popup
+        // This prevents continuous SMC polling for users who don't use the sidecar
+        let sidecarEnabled = Store.shared.bool(key: "enableCpuSidecar", defaultValue: false)
+        self.popup = !sidecarEnabled
+
         switch SystemKit.shared.device.platform {
         case .m1, .m1Pro, .m1Max, .m1Ultra:
             self.list = ["Tp09", "Tp0T", "Tp01", "Tp05", "Tp0D", "Tp0H", "Tp0L", "Tp0P", "Tp0X", "Tp0b"]
@@ -322,7 +340,11 @@ public class FrequencyReader: Reader<CPU_Frequency> {
     }
     
     public override func setup() {
-        self.popup = true
+        // Only run continuously if the CPU sidecar is enabled, otherwise gate to popup
+        // This prevents continuous IOReport polling for users who don't use the sidecar
+        let sidecarEnabled = Store.shared.bool(key: "enableCpuSidecar", defaultValue: false)
+        self.popup = !sidecarEnabled
+
         self.eCoreFreqs = SystemKit.shared.device.info.cpu?.eCoreFrequencies ?? []
         self.pCoreFreqs = SystemKit.shared.device.info.cpu?.pCoreFrequencies ?? []
         self.eCoreCount = Double(SystemKit.shared.device.info.cpu?.eCores ?? 0)
@@ -538,7 +560,10 @@ public class AverageLoadReader: Reader<CPU_AverageLoad> {
     private var load: CPU_AverageLoad = CPU_AverageLoad()
     
     public override func setup() {
-        self.popup = false
+        // Only run continuously if the CPU sidecar is enabled, otherwise gate to popup
+        // uptime is lightweight, but still respect the flag for consistency
+        let sidecarEnabled = Store.shared.bool(key: "enableCpuSidecar", defaultValue: false)
+        self.popup = !sidecarEnabled
         self.setInterval(15)
     }
     

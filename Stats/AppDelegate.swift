@@ -45,6 +45,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
     internal var clickInNotification: Bool = false
     internal var menuBarItem: NSStatusItem? = nil
     internal var combinedView: CombinedView = CombinedView()
+    internal let sidecar = CpuSidecarBSDSocket()
     
     internal var pauseState: Bool {
         Store.shared.bool(key: "pause", defaultValue: false)
@@ -80,6 +81,53 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
             self?.handleKeyEvent(event)
             return event
         }
+
+        // Subscribe to CPU module notifications to update SidecarStore
+        NotificationCenter.default.addObserver(forName: .cpuLoadUpdated, object: nil, queue: nil) { notification in
+            if let load = notification.object as? CPU_Load {
+                SidecarStore.shared.update(load: load)
+            }
+        }
+        NotificationCenter.default.addObserver(forName: .cpuProcessesUpdated, object: nil, queue: nil) { notification in
+            if let processes = notification.object as? [TopProcess] {
+                SidecarStore.shared.update(processes: processes)
+            }
+        }
+        NotificationCenter.default.addObserver(forName: .cpuAverageLoadUpdated, object: nil, queue: nil) { notification in
+            if let avg = notification.object as? CPU_AverageLoad {
+                SidecarStore.shared.update(avg: avg)
+            }
+        }
+        NotificationCenter.default.addObserver(forName: .cpuTemperatureUpdated, object: nil, queue: nil) { notification in
+            SidecarStore.shared.update(temp: notification.object as? Double)
+        }
+        NotificationCenter.default.addObserver(forName: .cpuFrequencyUpdated, object: nil, queue: nil) { notification in
+            if let freq = notification.object as? CPU_Frequency {
+                SidecarStore.shared.update(freq: freq)
+            }
+        }
+
+        // Start local sidecar for external UI (Tauri) to consume CPU stats
+        // Enable via: defaults write eu.exelban.Stats enableCpuSidecar -bool true
+        // IMPORTANT: App restart required after changing this setting
+        // Note: Enabling sidecar activates continuous CPU polling (processes, temperature, frequency)
+        let sidecarEnabled = Store.shared.bool(key: "enableCpuSidecar", defaultValue: false)
+        if sidecarEnabled {
+            self.sidecar.start()
+            info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            info("CPU Sidecar: ENABLED")
+            info("  • HTTP server running on http://127.0.0.1:8973/cpu")
+            info("  • Continuous polling active (processes, temp, frequency)")
+            info("  • To disable: defaults write eu.exelban.Stats enableCpuSidecar -bool false")
+            info("  • Then restart Stats app")
+            info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        } else {
+            info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            info("CPU Sidecar: DISABLED (default - battery friendly)")
+            info("  • To enable: defaults write eu.exelban.Stats enableCpuSidecar -bool true")
+            info("  • Then restart Stats app")
+            info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        }
         
         info("Stats started in \((startingPoint.timeIntervalSinceNow * -1).rounded(toPlaces: 4)) seconds")
         self.startTS = Date()
@@ -88,6 +136,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDele
     func applicationWillTerminate(_ aNotification: Notification) {
         modules.forEach{ $0.terminate() }
         Remote.shared.terminate()
+        self.sidecar.stop()
     }
     
     deinit {

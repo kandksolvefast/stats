@@ -10,15 +10,23 @@ import Cocoa
 import Kit
 import WidgetKit
 
+public extension Notification.Name {
+    static let cpuLoadUpdated = Notification.Name("cpuLoadUpdated")
+    static let cpuProcessesUpdated = Notification.Name("cpuProcessesUpdated")
+    static let cpuAverageLoadUpdated = Notification.Name("cpuAverageLoadUpdated")
+    static let cpuTemperatureUpdated = Notification.Name("cpuTemperatureUpdated")
+    static let cpuFrequencyUpdated = Notification.Name("cpuFrequencyUpdated")
+}
+
 public struct CPU_Load: Codable, RemoteType {
     public var totalUsage: Double = 0
-    var usagePerCore: [Double] = []
-    var usageECores: Double? = nil
-    var usagePCores: Double? = nil
+    public var usagePerCore: [Double] = []
+    public var usageECores: Double? = nil
+    public var usagePCores: Double? = nil
     
-    var systemLoad: Double = 0
-    var userLoad: Double = 0
-    var idleLoad: Double = 0
+    public var systemLoad: Double = 0
+    public var userLoad: Double = 0
+    public var idleLoad: Double = 0
     
     public func remote() -> Data? {
         var string = "1,1,\(self.totalUsage),\(self.usagePerCore.count),"
@@ -31,9 +39,9 @@ public struct CPU_Load: Codable, RemoteType {
 }
 
 public struct CPU_Frequency: Codable, RemoteType {
-    var value: Double = 0
-    var eCore: Double = 0
-    var pCore: Double = 0
+    public var value: Double = 0
+    public var eCore: Double = 0
+    public var pCore: Double = 0
     
     public func remote() -> Data? {
         let string = "1,1,\(self.value)$"
@@ -48,9 +56,9 @@ public struct CPU_Limit: Codable {
 }
 
 public struct CPU_AverageLoad: Codable, RemoteType {
-    var load1: Double = 0
-    var load5: Double = 0
-    var load15: Double = 0
+    public var load1: Double = 0
+    public var load5: Double = 0
+    public var load15: Double = 0
     
     public func remote() -> Data? {
         let string = "1,1,\(self.load1),\(self.load5),\(self.load15)$"
@@ -63,7 +71,7 @@ public class CPU: Module {
     private let settingsView: Settings
     private let portalView: Portal
     private let notificationsView: Notifications
-    
+
     private var loadReader: LoadReader? = nil
     private var processReader: ProcessReader? = nil
     private var temperatureReader: TemperatureReader? = nil
@@ -131,15 +139,23 @@ public class CPU: Module {
         
         self.loadReader = LoadReader(.CPU) { [weak self] value in
             self?.loadCallback(value)
+            if let v = value {
+                NotificationCenter.default.post(name: .cpuLoadUpdated, object: v)
+            }
         }
         self.processReader = ProcessReader(.CPU) { [weak self] value in
             self?.popupView.processCallback(value)
+            NotificationCenter.default.post(name: .cpuProcessesUpdated, object: value ?? [])
         }
-        self.averageLoadReader = AverageLoadReader(.CPU, popup: true) { [weak self] value in
+        self.averageLoadReader = AverageLoadReader(.CPU) { [weak self] value in
             self?.popupView.averageCallback(value)
+            if let v = value {
+                NotificationCenter.default.post(name: .cpuAverageLoadUpdated, object: v)
+            }
         }
-        self.temperatureReader = TemperatureReader(.CPU, popup: true) { [weak self] value in
+        self.temperatureReader = TemperatureReader(.CPU) { [weak self] value in
             self?.popupView.temperatureCallback(value)
+            NotificationCenter.default.post(name: .cpuTemperatureUpdated, object: value as Any)
         }
         
         #if arch(x86_64)
@@ -149,6 +165,9 @@ public class CPU: Module {
         #else
         self.frequencyReader = FrequencyReader(.CPU, popup: false) { [weak self] value in
             self?.popupView.frequencyCallback(value)
+            if let v = value {
+                NotificationCenter.default.post(name: .cpuFrequencyUpdated, object: v)
+            }
         }
         #endif
         

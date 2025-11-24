@@ -2,6 +2,9 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use sysinfo::{CpuRefreshKind, ProcessRefreshKind, RefreshKind, System};
 
+#[cfg(target_os = "macos")]
+use crate::readers::smc::read_cpu_temperature;
+
 #[derive(Clone, Debug, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ProcessInfo {
@@ -28,6 +31,17 @@ pub struct CpuSnapshot {
   pub temperature: Option<f32>,
   /// Current CPU frequency in MHz (if available)
   pub frequency: Option<u64>,
+  /// Efficiency/performance split (if available)
+  pub efficiency_usage: Option<f32>,
+  pub performance_usage: Option<f32>,
+  pub efficiency_frequency: Option<u64>,
+  pub performance_frequency: Option<u64>,
+  /// Load averages
+  pub load_1m: f32,
+  pub load_5m: f32,
+  pub load_15m: f32,
+  /// Uptime in seconds
+  pub uptime_seconds: u64,
   /// Number of physical cores
   pub physical_cores: usize,
   /// Number of logical cores (including hyperthreading)
@@ -66,7 +80,15 @@ impl CpuReader {
 
     let cpu_info = self.system.global_cpu_info();
     let usage = cpu_info.cpu_usage();
-    let frequency = Some(cpu_info.frequency());
+    let frequency = {
+      let mut freqs: Vec<u64> = self.system.cpus().iter().map(|c| c.frequency() as u64).collect();
+      if freqs.is_empty() {
+        None
+      } else {
+        let sum: u64 = freqs.iter().sum();
+        Some(sum / freqs.len() as u64)
+      }
+    };
 
     let per_core_usage = self
       .system
@@ -78,17 +100,35 @@ impl CpuReader {
     let logical_cores = self.system.cpus().len();
     let physical_cores = self.system.physical_core_count().unwrap_or(logical_cores);
 
+    let load = sysinfo::System::load_average();
+    let uptime_seconds = sysinfo::System::uptime();
+
+    #[cfg(target_os = "macos")]
+    let temperature = read_cpu_temperature();
+    #[cfg(not(target_os = "macos"))]
+    let temperature = None;
+
+    let (system_load_opt, user_load_opt) = (None, None);
+
     let top_processes = Self::collect_top_processes(&self.system);
     let idle_load = (100.0 - usage).max(0.0);
 
     CpuSnapshot {
       total_usage: usage,
       per_core_usage,
-      system_load: None, // sysinfo doesn't currently expose user/system split
-      user_load: None,
+      system_load: system_load_opt,
+      user_load: user_load_opt,
       idle_load,
-      temperature: None,
+      temperature,
       frequency,
+      load_1m: load.one as f32,
+      load_5m: load.five as f32,
+      load_15m: load.fifteen as f32,
+      uptime_seconds,
+      efficiency_usage: None,
+      performance_usage: None,
+      efficiency_frequency: None,
+      performance_frequency: None,
       physical_cores,
       logical_cores,
       top_processes,

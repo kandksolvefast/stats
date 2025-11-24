@@ -9,12 +9,15 @@ authors = ["Stats Team"]
 tauri-build = { version = "1.5", features = [] }
 
 [dependencies]
-tauri = { version = "1.8", features = ["shell-all"] }
+tauri = { version = "1.8", features = [] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tokio = { version = "1.40", features = ["rt-multi-thread", "macros"] }
 sysinfo = "0.30"
 chrono = { version = "0.4", features = ["serde"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+smc = "0.2"
 
 [features]
 default = ["custom-protocol"]
