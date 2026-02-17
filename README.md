@@ -1,11 +1,5 @@
 <div align="center" markdown="1">
- <sup>Special thanks to:</sup>
- <br><br>
- <a href="https://go.warp.dev/stats">
-  <img width="400" alt="Warp sponsorship" src="https://github.com/user-attachments/assets/67ff3655-983d-43cf-9e99-51ce76afa3e7"/>
- </a>
- <br><br>
- <a href="https://go.warp.dev/stats">Warp is built for coding with multiple AI agents</a>
+  <img width="900" alt="Stats CPU Sidecar Dashboard" src="stats-tauri/screenshots/cpu-dashboard.png" />
 </div>
 
 ---
